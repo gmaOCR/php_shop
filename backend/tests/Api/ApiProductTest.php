@@ -17,8 +17,8 @@ class ApiProductTest extends WebTestCase
         $this->assertResponseHeaderSame('content-type', 'application/ld+json; charset=utf-8');
 
         $data = json_decode($client->getResponse()->getContent(), true);
-        $this->assertArrayHasKey('hydra:member', $data);
-        $this->assertIsArray($data['hydra:member']);
+        $this->assertArrayHasKey('member', $data);
+        $this->assertIsArray($data['member']);
     }
 
     public function testGetProduct(): void
@@ -29,8 +29,8 @@ class ApiProductTest extends WebTestCase
         $client->request('GET', '/api/products');
         $data = json_decode($client->getResponse()->getContent(), true);
         
-        if (count($data['hydra:member']) > 0) {
-            $productId = $data['hydra:member'][0]['id'];
+        if (isset($data['member']) && count($data['member']) > 0) {
+            $productId = $data['member'][0]['id'];
             
             $client->request('GET', "/api/products/{$productId}");
             
@@ -54,7 +54,7 @@ class ApiProductTest extends WebTestCase
         $this->assertResponseIsSuccessful();
         $data = json_decode($client->getResponse()->getContent(), true);
         
-        $this->assertArrayHasKey('hydra:member', $data);
-        $this->assertIsArray($data['hydra:member']);
+        $this->assertArrayHasKey('member', $data);
+        $this->assertIsArray($data['member']);
     }
 }
