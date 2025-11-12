@@ -1,0 +1,14 @@
+/.idea
+/.vscode
+/vendor/
+/node_modules/
+/var/
+/public/build/
+.env.local
+.env.*.local
+/env.local.php
+.DS_Store
+/.phpunit.result.cache
+/.cache/
+/.env
+/.runtime/
