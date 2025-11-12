@@ -13,3 +13,4 @@
 /.env
 /.runtime/
 .github/instructions/shop.instructions.md
+frontend/.env
