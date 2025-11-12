@@ -1,0 +1,115 @@
+.product-detail {
+  max-width: 800px;
+  margin: 0 auto;
+  padding: 2rem;
+
+  .back-link {
+    display: inline-block;
+    color: #667eea;
+    text-decoration: none;
+    margin-bottom: 2rem;
+    font-weight: 600;
+
+    &:hover {
+      text-decoration: underline;
+    }
+  }
+
+  .product-content {
+    background: white;
+    border-radius: 8px;
+    padding: 2rem;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+
+    .product-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 1.5rem;
+      flex-wrap: wrap;
+      gap: 1rem;
+
+      h1 {
+        margin: 0;
+        color: #333;
+        font-size: 2rem;
+      }
+
+      .status {
+        padding: 0.5rem 1rem;
+        border-radius: 12px;
+        font-size: 0.9rem;
+        font-weight: 600;
+
+        &.status-online {
+          background-color: #d4edda;
+          color: #155724;
+        }
+
+        &.status-offline {
+          background-color: #f8d7da;
+          color: #721c24;
+        }
+      }
+    }
+
+    .category-info {
+      margin-bottom: 1.5rem;
+      padding: 1rem;
+      background-color: #f8f9fa;
+      border-radius: 4px;
+
+      .label {
+        font-weight: 600;
+        color: #666;
+        margin-right: 0.5rem;
+      }
+
+      .category-link {
+        color: #667eea;
+        text-decoration: none;
+
+        &:hover {
+          text-decoration: underline;
+        }
+      }
+    }
+
+    .description {
+      margin-bottom: 2rem;
+
+      h2 {
+        color: #333;
+        font-size: 1.5rem;
+        margin-bottom: 1rem;
+      }
+
+      p {
+        color: #666;
+        line-height: 1.6;
+        font-size: 1.1rem;
+      }
+    }
+
+    .price-section {
+      display: flex;
+      align-items: baseline;
+      gap: 1rem;
+      padding: 1.5rem;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      border-radius: 8px;
+
+      .price-label {
+        color: rgba(255, 255, 255, 0.9);
+        font-size: 1.2rem;
+        font-weight: 600;
+      }
+
+      .price {
+        color: white;
+        font-size: 2rem;
+        font-weight: bold;
+      }
+    }
+  }
+}

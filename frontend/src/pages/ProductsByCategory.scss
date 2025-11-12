@@ -1,0 +1,57 @@
+.products-by-category {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 2rem;
+
+  h1 {
+    text-align: center;
+    color: #333;
+    margin-bottom: 1rem;
+  }
+
+  .total-count {
+    text-align: center;
+    color: #666;
+    margin-bottom: 2rem;
+  }
+
+  .products-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    gap: 1.5rem;
+    margin-bottom: 2rem;
+  }
+
+  .no-products {
+    text-align: center;
+    color: #666;
+    padding: 2rem;
+    font-size: 1.1rem;
+  }
+
+  .pagination {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 1rem;
+    margin-top: 2rem;
+
+    button {
+      background-color: #667eea;
+      color: white;
+      border: none;
+      padding: 0.5rem 1rem;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 1rem;
+
+      &:hover {
+        background-color: #5568d3;
+      }
+    }
+
+    span {
+      font-weight: 600;
+    }
+  }
+}

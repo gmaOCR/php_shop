@@ -1,0 +1,21 @@
+.categories-page {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 2rem;
+
+  h1 {
+    text-align: center;
+    color: #333;
+    margin-bottom: 2rem;
+  }
+}
+
+.loading, .error {
+  text-align: center;
+  padding: 2rem;
+  font-size: 1.2rem;
+}
+
+.error {
+  color: #dc3545;
+}

@@ -1,0 +1,29 @@
+version: '3.8'
+
+services:
+  mysql:
+    image: mysql:8.0
+    container_name: shop_mysql
+    restart: unless-stopped
+    ports:
+      - "3307:3306"
+    environment:
+      MYSQL_ROOT_PASSWORD: root_password
+      MYSQL_DATABASE: shop_db
+      MYSQL_USER: shop_user
+      MYSQL_PASSWORD: shop_password
+    volumes:
+      - mysql_data:/var/lib/mysql
+    networks:
+      - shop_network
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      timeout: 20s
+      retries: 10
+
+volumes:
+  mysql_data:
+
+networks:
+  shop_network:
+    driver: bridge

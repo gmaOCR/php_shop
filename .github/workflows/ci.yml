@@ -2,38 +2,76 @@ name: CI
 
 on:
   push:
-    branches: [ main ]
+    branches: [ main, master ]
   pull_request:
-    branches: [ main ]
+    branches: [ main, master ]
 
 jobs:
   backend:
     runs-on: ubuntu-latest
+    
+    services:
+      mysql:
+        image: mysql:8.0
+        env:
+          MYSQL_ROOT_PASSWORD: root_password
+          MYSQL_DATABASE: shop_db_test
+          MYSQL_USER: shop_user
+          MYSQL_PASSWORD: shop_password
+        ports:
+          - 3306:3306
+        options: --health-cmd="mysqladmin ping" --health-interval=10s --health-timeout=5s --health-retries=3
+
     steps:
       - uses: actions/checkout@v4
+      
       - name: Setup PHP
         uses: shivammathur/setup-php@v2
         with:
           php-version: '8.2'
+          extensions: pdo, pdo_mysql, mbstring, xml, intl
+          
       - name: Install composer dependencies
-        run: |
-          composer install --no-progress --no-suggest --prefer-dist
+        working-directory: ./backend
+        run: composer install --no-progress --prefer-dist --optimize-autoloader
+        
+      - name: Run database migrations
+        working-directory: ./backend
+        env:
+          DATABASE_URL: mysql://shop_user:shop_password@127.0.0.1:3306/shop_db_test?serverVersion=8.0
+        run: php bin/console doctrine:migrations:migrate --no-interaction
+        
+      - name: Load fixtures
+        working-directory: ./backend
+        env:
+          DATABASE_URL: mysql://shop_user:shop_password@127.0.0.1:3306/shop_db_test?serverVersion=8.0
+        run: php bin/console doctrine:fixtures:load --no-interaction
+        
       - name: Run PHP unit tests
-        run: |
-          vendor/bin/phpunit --version || true
+        working-directory: ./backend
+        env:
+          DATABASE_URL: mysql://shop_user:shop_password@127.0.0.1:3306/shop_db_test?serverVersion=8.0
+        run: php bin/phpunit
 
   frontend:
     runs-on: ubuntu-latest
+    
     steps:
       - uses: actions/checkout@v4
+      
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
-          node-version: '18'
-      - name: Install and test frontend
-        run: |
-          if [ -f frontend/package.json ]; then
-            cd frontend
-            npm ci
-            npm test --silent || true
-          fi
+          node-version: '20'
+          
+      - name: Install dependencies
+        working-directory: ./frontend
+        run: npm ci
+        
+      - name: Run frontend tests
+        working-directory: ./frontend
+        run: npm test
+        
+      - name: Build frontend
+        working-directory: ./frontend
+        run: npm run build
