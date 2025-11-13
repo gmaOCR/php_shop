@@ -39,6 +39,29 @@ Le script `install.sh` effectue automatiquement :
 - ✅ Installation dépendances frontend
 - ✅ Affichage du résumé avec URLs
 
+### Pour Windows (PowerShell)
+
+Si vous êtes sur Windows, un équivalent PowerShell est fourni : `install.ps1`.
+
+- Ouvrez PowerShell (idéalement PowerShell 7) en mode administrateur.
+- Exécutez le script depuis la racine du dépôt :
+
+```powershell
+# Autoriser l'exécution si nécessaire (à utiliser avec prudence)
+powershell -ExecutionPolicy RemoteSigned -File .\install.ps1
+
+# Ou, depuis une invite PowerShell déjà ouverte
+.\install.ps1
+```
+
+Le script PowerShell :
+- détecte `docker compose` ou `docker-compose` et l'utilise automatiquement
+- vérifie les ports (80, 3000, 3307)
+- démarre les services Docker, attend le health check MySQL
+- exécute `composer install`, migrations, fixtures et `npm install` dans les containers
+
+Remarque : si vous utilisez WSL (Windows Subsystem for Linux) et que Docker Desktop est intégré à WSL, vous pouvez aussi exécuter `install.sh` directement depuis votre distribution WSL.
+
 ### Option 2 : Installation manuelle 🔧
 
 ### 1. Cloner le projet

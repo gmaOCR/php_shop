@@ -25,12 +25,33 @@ if ! command -v docker &> /dev/null; then
     exit 1
 fi
 
-if ! command -v docker-compose &> /dev/null; then
-    print_error "Docker Compose n'est pas installé. Installez Docker Compose : https://docs.docker.com/compose/install/"
+# Détecter la commande docker-compose (v1) ou docker compose (v2)
+DOCKER_COMPOSE_CMD=""
+if command -v docker-compose &> /dev/null; then
+    DOCKER_COMPOSE_CMD="docker-compose"
+elif docker compose version >/dev/null 2>&1; then
+    DOCKER_COMPOSE_CMD="docker compose"
+fi
+
+if [ -z "$DOCKER_COMPOSE_CMD" ]; then
+    print_error "Docker Compose n'est pas disponible (ni 'docker-compose' ni 'docker compose'). Installez Docker Compose ou utilisez Docker Desktop qui inclut 'docker compose'."
     exit 1
 fi
 
-print_success "Docker et Docker Compose sont installés"
+print_success "Docker trouvé et commande compose: $DOCKER_COMPOSE_CMD"
+
+# Vérifier utilitaires utiles (lsof/jq/netstat)
+MISSING_TOOLS=()
+if ! command -v lsof &> /dev/null; then
+    MISSING_TOOLS+=(lsof)
+fi
+if ! command -v jq &> /dev/null; then
+    MISSING_TOOLS+=(jq)
+fi
+if [ ${#MISSING_TOOLS[@]} -ne 0 ]; then
+    print_warning "Outils recommandés manquants: ${MISSING_TOOLS[*]}"
+    print_warning "Sur mac: brew install lsof jq   | Sur Debian/Ubuntu: sudo apt install lsof jq"
+fi
 
 # Vérifier les ports
 print_info "Vérification des ports disponibles..."
