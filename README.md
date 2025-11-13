@@ -182,7 +182,145 @@ docker exec shop_frontend_dev npm run test:ui
 
 - **Backend** : 2 test files, 11 assertions (ProductCrudTest, ApiProductTest)
 - **Frontend** : 2 test files, 9 tests (ProductCard 6/6, CategoryList 3/3)
-docker-compose -f docker-compose.dev.yml up -d --build
+
+## 🔧 Troubleshooting - Problèmes courants
+
+### ❌ Erreur "Access denied" MySQL (SQLSTATE[HY000] [1045])
+
+**Cause** : Volume MySQL existant avec des credentials différents
+
+**Solution** :
+```bash
+# Supprimer le volume MySQL (⚠️ DÉTRUIT LES DONNÉES)
+docker-compose -f docker-compose.dev.yml down -v
+
+# Relancer avec les nouveaux credentials
+docker-compose -f docker-compose.dev.yml up -d
+
+# Attendre MySQL et réinstaller
+until docker inspect --format='{{json .State.Health.Status}}' shop_mysql_dev | grep -q '"healthy"'; do sleep 2; done
+docker exec shop_backend_dev php bin/console doctrine:database:create --if-not-exists
+docker exec shop_backend_dev php bin/console doctrine:migrations:migrate --no-interaction
+docker exec shop_backend_dev php bin/console doctrine:fixtures:load --no-interaction
+```
+
+### ❌ Port déjà utilisé (80, 3000, 3307)
+
+**Cause** : Un autre service utilise le port
+
+**Solution** :
+```bash
+# Identifier le processus sur le port 80
+sudo lsof -i :80
+# ou
+sudo netstat -tulpn | grep :80
+
+# Arrêter le service conflictuel ou modifier docker-compose.dev.yml
+# Exemple : changer "80:80" en "8080:80" pour nginx
+```
+
+### ❌ MySQL ne démarre pas / Health check failed
+
+**Cause** : MySQL ne répond pas au health check
+
+**Solution** :
+```bash
+# Vérifier les logs MySQL
+docker-compose -f docker-compose.dev.yml logs mysql
+
+# Vérifier le health check manuellement
+docker exec shop_mysql_dev mysqladmin ping -h localhost -u root -proot_password
+
+# Augmenter le timeout si machine lente (modifier docker-compose.dev.yml)
+# healthcheck:
+#   interval: 15s
+#   timeout: 10s
+#   retries: 10
+```
+
+### ❌ composer install échoue
+
+**Cause** : Problème de permissions ou cache Composer
+
+**Solution** :
+```bash
+# Nettoyer le cache Composer
+docker exec shop_backend_dev composer clear-cache
+
+# Réinstaller avec verbose
+docker exec shop_backend_dev composer install -vvv
+
+# Si problème de permissions
+docker exec shop_backend_dev chown -R www-data:www-data /var/www/html
+```
+
+### ❌ Frontend ne charge pas / Page blanche
+
+**Cause** : Build frontend non généré ou erreur JavaScript
+
+**Solution** :
+```bash
+# Vérifier les logs frontend
+docker-compose -f docker-compose.dev.yml logs frontend
+
+# Rebuild le frontend
+docker exec shop_frontend_dev npm run build
+
+# Vérifier que nginx sert les bons fichiers
+docker exec shop_nginx_dev ls -la /var/www/frontend
+```
+
+### ❌ EasyAdmin CSS/JS ne charge pas (404)
+
+**Cause** : Assets non installés ou nginx mal configuré
+
+**Solution** :
+```bash
+# Réinstaller les assets
+docker exec shop_backend_dev php bin/console assets:install public --symlink
+
+# Vérifier nginx location /bundles/
+docker exec shop_nginx_dev cat /etc/nginx/nginx.conf | grep bundles
+```
+
+### 💡 Variables d'environnement Docker vs local
+
+**Important** : `docker-compose.dev.yml` **override** les variables de `backend/.env`
+
+- `backend/.env` : Configuration pour usage **local** (hors Docker)
+  ```ini
+  DATABASE_URL="mysql://shop_user:shop_password@127.0.0.1:3307/shop_db?serverVersion=8.0"
+  ```
+
+- `docker-compose.dev.yml` : Configuration pour les **containers**
+  ```yaml
+  environment:
+    DATABASE_URL: mysql://shop_user:shop_password@mysql:3306/shop_db?serverVersion=8.0
+  ```
+
+Les containers utilisent `mysql:3306` (nom du service Docker), pas `127.0.0.1:3307`.
+
+### 📊 Vérifier que tout fonctionne
+
+```bash
+# 1. Tous les containers actifs ?
+docker ps
+
+# 2. MySQL healthy ?
+docker inspect --format='{{.State.Health.Status}}' shop_mysql_dev
+# Doit retourner : healthy
+
+# 3. API répond ?
+curl http://localhost/api/products | jq '.totalItems'
+# Doit retourner : 21
+
+# 4. Backoffice accessible ?
+curl -I http://localhost/admin
+# Doit retourner : HTTP/1.1 302 Found (redirect vers login)
+
+# 5. Frontend charge ?
+curl -I http://localhost
+# Doit retourner : HTTP/1.1 200 OK
 ```
 
 ## 🧪 Tests
