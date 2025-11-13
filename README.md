@@ -13,8 +13,11 @@ Application e-commerce fullstack moderne avec backend Symfony 6.4 + EasyAdmin et
 
 - Docker et Docker Compose
 - Git
+- **Ports libres** : 80 (nginx), 3000 (frontend dev), 3307 (MySQL externe)
 
 **C'est tout !** Docker gère PHP 8.2, Composer, Node.js, MySQL et Nginx.
+
+⚠️ **Avant de commencer** : Assurez-vous que les ports 80, 3000 et 3307 ne sont pas utilisés par d'autres services.
 
 ## 🚀 Installation rapide (depuis git clone)
 
@@ -33,11 +36,28 @@ cp .env.dist .env
 cp backend/.env.dist backend/.env
 cp frontend/.env.example frontend/.env
 
+# ⚠️ Note importante sur les variables d'environnement :
+# - backend/.env contient DATABASE_URL pour usage local (hors Docker)
+# - docker-compose.dev.yml OVERRIDE cette variable via environment:
+# - Les containers utilisent les variables Docker, pas backend/.env
+
 # Démarrer tous les services (MySQL, Backend, Frontend, Nginx)
 docker-compose -f docker-compose.dev.yml up -d
 
-# Attendre que MySQL soit prêt (environ 10-15 secondes)
-sleep 15
+# ⚠️ Si vous avez déjà lancé le projet et changé les credentials MySQL :
+# Vous devrez supprimer le volume pour réinitialiser MySQL (DÉTRUIT LES DONNÉES) :
+# docker-compose -f docker-compose.dev.yml down -v
+# puis relancer : docker-compose -f docker-compose.dev.yml up -d
+
+# Attendre que MySQL soit prêt avec health check (recommandé)
+echo "Attente du démarrage de MySQL..."
+until docker inspect --format='{{json .State.Health.Status}}' shop_mysql_dev | grep -q '"healthy"'; do
+  echo -n "."
+  sleep 2
+done
+echo " MySQL prêt !"
+
+# Alternative simple (moins robuste) : sleep 15
 
 # Installer les dépendances backend et créer la base
 docker exec shop_backend_dev composer install
@@ -104,11 +124,20 @@ npm test
 # Démarrer l'environnement
 docker-compose -f docker-compose.dev.yml up -d
 
-# Arrêter l'environnement
+# Arrêter l'environnement (conserve les données)
 docker-compose -f docker-compose.dev.yml down
 
-# Voir les logs
+# Arrêter et SUPPRIMER les volumes (⚠️ DÉTRUIT LES DONNÉES MySQL)
+docker-compose -f docker-compose.dev.yml down -v
+
+# Voir les logs en temps réel
 docker-compose -f docker-compose.dev.yml logs -f
+
+# Voir les logs d'un service spécifique
+docker-compose -f docker-compose.dev.yml logs -f backend
+
+# Vérifier l'état de santé de MySQL
+docker inspect --format='{{json .State.Health}}' shop_mysql_dev | jq
 
 # Accéder au container backend
 docker exec -it shop_backend_dev bash
@@ -116,8 +145,43 @@ docker exec -it shop_backend_dev bash
 # Accéder au container frontend  
 docker exec -it shop_frontend_dev sh
 
-# Recréer l'environnement (nettoie tout)
+# Recréer l'environnement (nettoie tout et rebuild)
 docker-compose -f docker-compose.dev.yml down -v
+docker-compose -f docker-compose.dev.yml up -d --build
+```
+
+## 🧪 Lancer les tests
+
+### Tests backend (PHPUnit)
+
+```bash
+# Dans le container backend
+docker exec shop_backend_dev php bin/phpunit
+
+# Avec coverage (si xdebug activé)
+docker exec shop_backend_dev php bin/phpunit --coverage-text
+
+# Tests spécifiques
+docker exec shop_backend_dev php bin/phpunit tests/Entity/ProductTest.php
+```
+
+### Tests frontend (Vitest)
+
+```bash
+# Dans le container frontend
+docker exec shop_frontend_dev npm test
+
+# Mode watch (relance automatique)
+docker exec shop_frontend_dev npm run test:watch
+
+# Avec UI interactive
+docker exec shop_frontend_dev npm run test:ui
+```
+
+### Résultats attendus
+
+- **Backend** : 2 test files, 11 assertions (ProductCrudTest, ApiProductTest)
+- **Frontend** : 2 test files, 9 tests (ProductCard 6/6, CategoryList 3/3)
 docker-compose -f docker-compose.dev.yml up -d --build
 ```
 
