@@ -1,0 +1,40 @@
+# Git
+.git
+.gitignore
+
+# Documentation
+README.md
+README_DOCKER.md
+*.md
+
+# Environnements
+.env
+.env.local
+.env.*.local
+
+# Logs
+*.log
+logs/
+
+# Cache et fichiers temporaires
+backend/var/cache/*
+backend/var/log/*
+frontend/node_modules/
+frontend/dist/
+
+# Tests
+backend/tests/coverage/
+frontend/coverage/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Docker
+docker-compose.override.yml

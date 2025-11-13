@@ -1,0 +1,40 @@
+# Dockerfile pour le backend Symfony (Développement)
+FROM php:8.2-fpm-alpine
+
+# Installer les extensions PHP nécessaires
+RUN apk add --no-cache \
+    icu-dev \
+    libzip-dev \
+    mysql-dev \
+    git \
+    && docker-php-ext-install \
+    pdo_mysql \
+    intl \
+    zip \
+    opcache
+
+# Installer Composer
+COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
+
+# Installer Xdebug pour le développement
+RUN apk add --no-cache $PHPIZE_DEPS linux-headers \
+    && pecl install xdebug \
+    && docker-php-ext-enable xdebug
+
+# Configuration Xdebug
+RUN echo "xdebug.mode=develop,debug" >> /usr/local/etc/php/conf.d/docker-php-ext-xdebug.ini \
+    && echo "xdebug.client_host=host.docker.internal" >> /usr/local/etc/php/conf.d/docker-php-ext-xdebug.ini \
+    && echo "xdebug.start_with_request=yes" >> /usr/local/etc/php/conf.d/docker-php-ext-xdebug.ini
+
+# Définir le répertoire de travail
+WORKDIR /var/www/html
+
+# Créer les répertoires nécessaires
+RUN mkdir -p /var/lib/php/sessions var/cache var/log \
+    && chown -R www-data:www-data /var/lib/php/sessions
+
+# Exposer le port 9000 pour PHP-FPM
+EXPOSE 9000
+
+# Commande par défaut
+CMD ["php-fpm"]

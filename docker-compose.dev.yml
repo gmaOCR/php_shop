@@ -1,8 +1,8 @@
 services:
-  # Base de données MySQL
+  # Base de données MySQL (développement)
   mysql:
     image: mysql:8.0
-    container_name: shop_mysql
+    container_name: shop_mysql_dev
     restart: unless-stopped
     ports:
       - "3307:3306"
@@ -22,31 +22,34 @@ services:
       retries: 10
     command: --default-authentication-plugin=mysql_native_password
 
-  # Backend PHP-FPM
+  # Backend PHP-FPM (développement avec hot reload)
   backend:
     build:
       context: .
-      dockerfile: backend/Dockerfile
-    container_name: shop_backend
+      dockerfile: backend/Dockerfile.dev
+    container_name: shop_backend_dev
     restart: unless-stopped
     environment:
-      APP_ENV: prod
-      APP_DEBUG: 0
+      APP_ENV: dev
+      APP_DEBUG: 1
       DATABASE_URL: mysql://${MYSQL_USER:-shop_user}:${MYSQL_PASSWORD:-shop_password}@mysql:3306/${MYSQL_DATABASE:-shop_db}
+      CORS_ALLOW_ORIGIN: ${CORS_ALLOW_ORIGIN:-^https?://(localhost|127\.0\.0\.1)(:[0-9]+)?$}
     volumes:
       - ./backend:/var/www/html
+      - /var/www/html/vendor
     depends_on:
       mysql:
         condition: service_healthy
     networks:
       - shop_network
+    command: php-fpm
 
-  # Serveur web Nginx pour le backend
+  # Serveur web Nginx pour le backend (développement)
   nginx:
     build:
       context: .
       dockerfile: nginx/Dockerfile
-    container_name: shop_nginx
+    container_name: shop_nginx_dev
     restart: unless-stopped
     ports:
       - "8080:80"
@@ -57,17 +60,21 @@ services:
     networks:
       - shop_network
 
-  # Frontend React
+  # Frontend React (développement avec hot reload)
   frontend:
     build:
       context: .
-      dockerfile: frontend/Dockerfile
-    container_name: shop_frontend
+      dockerfile: frontend/Dockerfile.dev
+    container_name: shop_frontend_dev
     restart: unless-stopped
     ports:
-      - "3000:80"
+      - "3000:5173"
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
     networks:
       - shop_network
+    command: npm run dev -- --host 0.0.0.0
 
 volumes:
   mysql_data:

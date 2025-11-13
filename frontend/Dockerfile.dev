@@ -1,0 +1,23 @@
+# Dockerfile pour le frontend React (Développement)
+FROM node:20-alpine
+
+# Installer les outils de développement
+RUN apk add --no-cache git
+
+# Définir le répertoire de travail
+WORKDIR /app
+
+# Copier les fichiers de configuration
+COPY frontend/package.json frontend/package-lock.json ./
+
+# Installer les dépendances
+RUN npm install
+
+# Copier le code source
+COPY frontend/ .
+
+# Exposer le port 3000 pour Vite
+EXPOSE 3000
+
+# Commande par défaut (sera overriden dans docker-compose)
+CMD ["npm", "run", "dev"]

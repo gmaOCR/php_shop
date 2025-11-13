@@ -15,10 +15,16 @@
   }
 
   .product-info {
+    // Reserve space for category badge at top-right
+    padding-right: 6rem;
+    
     h3 {
       margin: 0 0 0.5rem 0;
       color: #333;
       font-size: 1.2rem;
+      word-wrap: break-word;
+      // Ensure title doesn't overlap with badge
+      padding-right: 0.5rem;
     }
 
     .description {
@@ -26,6 +32,9 @@
       font-size: 0.9rem;
       line-height: 1.4;
       margin-bottom: 1rem;
+      // Reset padding for description
+      margin-right: -6rem;
+      padding-right: 0;
     }
 
     .product-footer {
@@ -33,6 +42,11 @@
       justify-content: space-between;
       align-items: center;
       margin-top: 1rem;
+      flex-wrap: wrap;
+      gap: 0.5rem;
+      // Reset padding for footer
+      margin-right: -6rem;
+      padding-right: 0;
 
       .price {
         font-size: 1.3rem;
@@ -67,6 +81,33 @@
       padding: 0.25rem 0.75rem;
       border-radius: 12px;
       font-size: 0.8rem;
+      white-space: nowrap;
+      max-width: 5rem;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+  }
+
+  // Responsive adjustments
+  @media (max-width: 768px) {
+    .product-info {
+      padding-right: 0;
+      
+      h3 {
+        padding-right: 0;
+        margin-bottom: 2rem; // Space for badge below title
+      }
+      
+      .description, .product-footer {
+        margin-right: 0;
+      }
+      
+      .category-badge {
+        position: static;
+        display: inline-block;
+        margin-bottom: 0.5rem;
+        max-width: none;
+      }
     }
   }
 }
