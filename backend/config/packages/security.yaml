@@ -8,7 +8,7 @@ security:
             memory:
                 users:
                     admin:
-                        password: '$2y$13$6nF8qL8oF4hK8aH4F.5zNOZJKxBmXNT6LQ8h9L5gQ5Z3N6mF9Y5Xm' # password: admin
+                        password: '%env(ADMIN_PASSWORD_HASH)%'
                         roles: ['ROLE_ADMIN']
     firewalls:
         dev:
@@ -24,8 +24,11 @@ security:
             form_login:
                 login_path: app_login
                 check_path: app_login
+                default_target_path: admin
+                enable_csrf: true
             logout:
                 path: app_logout
+                target: app_login
 
             # activate different ways to authenticate
             # https://symfony.com/doc/current/security.html#the-firewall
