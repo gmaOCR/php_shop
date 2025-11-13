@@ -82,9 +82,10 @@
       border-radius: 12px;
       font-size: 0.8rem;
       white-space: nowrap;
-      max-width: 5rem;
+      max-width: 8rem;
       overflow: hidden;
       text-overflow: ellipsis;
+      z-index: 10;
     }
   }
 
