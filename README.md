@@ -8,116 +8,120 @@ Application e-commerce fullstack moderne avec backend Symfony 6.4 + EasyAdmin et
 
 - **Backend**: Symfony 6.4, MySQL 8, EasyAdmin, ApiPlatform
 - **Frontend**: React 18, Vite, React Router, Axios, SASS
-- **DevOps**: Docker Compose, GitHub Actions CI
+- **DevOps**: Docker Compose, Nginx reverse proxy
 - **Tests**: PHPUnit (backend) + Vitest (frontend)
 
 ## 📋 Prérequis
 
-- PHP >= 8.2 avec extensions: pdo_mysql, mbstring, xml, intl, zip
-- Composer
-- Node.js >= 18 et npm
 - Docker et Docker Compose
+- Git
 
-## 🚀 Installation
+**C'est tout !** Docker gère PHP 8.2, Composer, Node.js, MySQL et Nginx.
+
+## 🚀 Installation rapide (depuis git clone)
 
 ### 1. Cloner le projet
 
-\`\`\`bash
-git clone <repository-url>
-cd php_shop
-\`\`\`
-
-### 2. Démarrer MySQL avec Docker
-
-\`\`\`bash
-docker-compose up -d
-\`\`\`
-
-### 3. Configurer le backend
-
-\`\`\`bash
-cd backend
-composer install
-cp .env.dist .env
-
-# IMPORTANT: Configurer le mot de passe admin
-php bin/console security:hash-password YourSecurePassword
-# Copier le hash généré dans .env: ADMIN_PASSWORD_HASH='$2y$13$...'
-
-# Créer la base et charger les données
-php bin/console doctrine:database:create --if-not-exists
-php bin/console doctrine:migrations:migrate --no-interaction
-php bin/console doctrine:fixtures:load --no-interaction
-\`\`\`
-
-### 4. Configurer le frontend
-
-\`\`\`bash
-cd frontend
-npm install
-cp .env.example .env
-\`\`\`
-
-## 🎯 Démarrage
-
-### Backend (terminal 1)
-
 ```bash
-cd backend
-# Méthode recommandée avec Symfony CLI:
-symfony server:start
-
-# OU avec le script fourni:
-./start-dev-server.sh
-
-# OU manuellement avec PHP (déconseillé):
-cd public
-php -S 127.0.0.1:8000
+git clone https://github.com/gmaOCR/php_shop.git
+cd php_shop
 ```
 
-**Note**: 
-- **Symfony CLI est fortement recommandé** pour éviter les problèmes de double chargement
-- Utiliser `127.0.0.1` au lieu de `localhost` pour éviter les problèmes CORS
-- Voir `backend/TROUBLESHOOTING.md` pour les détails sur le problème "Cannot redeclare class"
+### 2. Démarrer l'environnement complet
 
-### Frontend (terminal 2)
+```bash
+# Copier les fichiers d'environnement
+cp .env.dist .env
+cp backend/.env.dist backend/.env
+cp frontend/.env.example frontend/.env
 
-\`\`\`bash
+# Démarrer tous les services (MySQL, Backend, Frontend, Nginx)
+docker-compose -f docker-compose.dev.yml up -d
+
+# Attendre que MySQL soit prêt (environ 10-15 secondes)
+sleep 15
+
+# Installer les dépendances backend et créer la base
+docker exec shop_backend_dev composer install
+docker exec shop_backend_dev php bin/console doctrine:database:create --if-not-exists
+docker exec shop_backend_dev php bin/console doctrine:migrations:migrate --no-interaction
+docker exec shop_backend_dev php bin/console doctrine:fixtures:load --no-interaction
+
+# Installer les dépendances frontend (déjà fait au build mais au cas où)
+docker exec shop_frontend_dev npm install
+```
+
+### 3. C'est prêt ! 🎉
+
+Accédez à l'application :
+- 🎨 **Frontend**: http://localhost
+- 🔐 **Admin EasyAdmin**: http://localhost/admin
+- 🔌 **API**: http://localhost/api
+
+**Identifiants backoffice** :
+- Utilisateur: `admin`
+- Mot de passe: `admin`
+
+## 📦 Scripts reproductibles (conformité instructions)
+
+### Backend
+
+```bash
+# Installation des dépendances
+cd backend
+composer install
+
+# Configuration
+cp .env.dist .env
+# Éditer .env et configurer DATABASE_URL si nécessaire
+
+# Création de la base et migrations
+php bin/console doctrine:database:create --if-not-exists
+php bin/console doctrine:migrations:migrate --no-interaction
+
+# Charger les fixtures (données de test avec Faker)
+php bin/console doctrine:fixtures:load --no-interaction
+```
+
+### Frontend
+
+```bash
+# Installation des dépendances
 cd frontend
+npm install
+
+# Configuration
+cp .env.example .env
+
+# Démarrage du serveur de développement
 npm run dev
-\`\`\`
 
-Le frontend sera accessible sur http://localhost:5173
+# Lancer les tests
+npm test
+```
 
-### URLs d'accès
+## 🎯 Commandes Docker utiles
 
-- 🎨 **Frontend**: http://localhost:5173
-- 🔌 **API**: http://127.0.0.1:8000/api
-- 📚 **API Docs**: http://127.0.0.1:8000/api (interface ApiPlatform)
-- 🔐 **Admin EasyAdmin**: http://127.0.0.1:8000/admin
+```bash
+# Démarrer l'environnement
+docker-compose -f docker-compose.dev.yml up -d
 
-## 🔐 Accès au backoffice
+# Arrêter l'environnement
+docker-compose -f docker-compose.dev.yml down
 
-URL: http://127.0.0.1:8000/admin
+# Voir les logs
+docker-compose -f docker-compose.dev.yml logs -f
 
-Identifiants par défaut (à changer en production!):
-- **Utilisateur**: admin
-- **Mot de passe**: celui configuré dans `.env` (par défaut: `admin`)
+# Accéder au container backend
+docker exec -it shop_backend_dev bash
 
-**⚠️ IMPORTANT - Sécurité Production**:
-- Lire le guide complet : `SECURITY_PRODUCTION.md`
-- Migrer vers une entité User en base de données
-- Changer le mot de passe par défaut
-- Ne jamais commiter `.env` avec des secrets
+# Accéder au container frontend  
+docker exec -it shop_frontend_dev sh
 
-## 📡 API Endpoints
-
-- \`GET /api/categories\` — Liste des catégories
-- \`GET /api/categories/{id}/products\` — Produits par catégorie (paginé)
-- \`GET /api/products\` — Tous les produits (paginé, filtrable)
-- \`GET /api/products/{id}\` — Détail d'un produit
-
-Documentation API complète: http://localhost:8000/api (interface ApiPlatform)
+# Recréer l'environnement (nettoie tout)
+docker-compose -f docker-compose.dev.yml down -v
+docker-compose -f docker-compose.dev.yml up -d --build
+```
 
 ## 🧪 Tests
 

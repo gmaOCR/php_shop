@@ -52,7 +52,9 @@ class ProductCrudController extends AbstractCrudController
             IdField::new('id')->hideOnForm(),
             TextField::new('name', 'Nom'),
             TextareaField::new('description', 'Description')->hideOnIndex(),
-            MoneyField::new('price', 'Prix')->setCurrency('EUR'),
+            MoneyField::new('price', 'Prix')
+                ->setCurrency('EUR')
+                ->setStoredAsCents(false),
             ChoiceField::new('status', 'État')
                 ->setChoices([
                     'En ligne' => Product::STATUS_ONLINE,
