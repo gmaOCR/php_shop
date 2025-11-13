@@ -5,13 +5,15 @@
 {% endblock %}
 
 {% block main %}
+    {% set CategoryCrudController = 'App\\Controller\\Admin\\CategoryCrudController' %}
+    {% set ProductCrudController = 'App\\Controller\\Admin\\ProductCrudController' %}
     <div class="row">
         <div class="col-md-6">
             <div class="card">
                 <div class="card-body">
                     <h5 class="card-title">Catégories</h5>
                     <p class="card-text">Gérez les catégories de produits</p>
-                    <a href="{{ path('admin') }}?crudAction=index&crudControllerFqcn=App\\Controller\\Admin\\CategoryCrudController" class="btn btn-primary">Accéder</a>
+                    <a href="{{ ea_url().setController(CategoryCrudController).setAction('index') }}" class="btn btn-primary">Accéder</a>
                 </div>
             </div>
         </div>
@@ -20,7 +22,7 @@
                 <div class="card-body">
                     <h5 class="card-title">Produits</h5>
                     <p class="card-text">Gérez le catalogue de produits</p>
-                    <a href="{{ path('admin') }}?crudAction=index&crudControllerFqcn=App\\Controller\\Admin\\ProductCrudController" class="btn btn-primary">Accéder</a>
+                    <a href="{{ ea_url().setController(ProductCrudController).setAction('index') }}" class="btn btn-primary">Accéder</a>
                 </div>
             </div>
         </div>
