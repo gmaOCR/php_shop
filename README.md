@@ -21,6 +21,26 @@ Application e-commerce fullstack moderne avec backend Symfony 6.4 + EasyAdmin et
 
 ## 🚀 Installation rapide (depuis git clone)
 
+### Option 1 : Script automatique (recommandé) 🚀
+
+```bash
+git clone https://github.com/gmaOCR/php_shop.git
+cd php_shop
+./install.sh
+```
+
+Le script `install.sh` effectue automatiquement :
+- ✅ Vérification des prérequis (Docker, Docker Compose)
+- ✅ Vérification des ports disponibles (80, 3000, 3307)
+- ✅ Copie des fichiers `.env`
+- ✅ Démarrage des services Docker
+- ✅ **Health check MySQL robuste** (timeout 60s)
+- ✅ Installation dépendances backend + migrations + fixtures
+- ✅ Installation dépendances frontend
+- ✅ Affichage du résumé avec URLs
+
+### Option 2 : Installation manuelle 🔧
+
 ### 1. Cloner le projet
 
 ```bash

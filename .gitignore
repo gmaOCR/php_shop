@@ -16,3 +16,4 @@
 frontend/.env
 backend/.env
 .github/workflows/ci.yml
+deploy.sh
