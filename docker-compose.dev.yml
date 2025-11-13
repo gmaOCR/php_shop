@@ -51,7 +51,7 @@ services:
     container_name: shop_nginx_dev
     restart: unless-stopped
     ports:
-      - "8080:80"
+      - "80:80"
     volumes:
       - ./backend/public:/var/www/html/public:ro
     depends_on:

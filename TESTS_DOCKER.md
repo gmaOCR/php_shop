@@ -4,20 +4,20 @@
 
 ### **Services Déployés**
 - ✅ MySQL 8.0 (port 3307)
-- ✅ Backend PHP-FPM + Symfony (via Nginx port 8080)
+- ✅ Backend PHP-FPM + Symfony (via Nginx port 80)
 - ✅ Frontend React + Vite (port 3000)
-- ✅ Nginx reverse proxy (port 8080)
+- ✅ Nginx reverse proxy (port 80)
 
 ### **Tests Effectués**
 
 #### 1. **API Backend**
 ```bash
-curl http://localhost:8080/api/products
+curl http://localhost/api/products
 ```
 **Résultat** : ✅ 20 produits chargés avec fixtures, API Platform fonctionne
 
 ```bash
-curl http://localhost:8080/api/categories
+curl http://localhost/api/categories
 ```
 **Résultat** : ✅ 5 catégories disponibles
 
@@ -41,25 +41,25 @@ docker-compose -f docker-compose.dev.yml exec mysql mysql -u shop_user -pshoppas
 
 #### 1. Liste des produits
 ```bash
-curl -s http://localhost:8080/api/products | jq '.member[0]'
+curl -s http://localhost/api/products | jq '.member[0]'
 ```
 **Attendu** : JSON avec détails du premier produit
 
 #### 2. Produit spécifique
 ```bash
-curl -s http://localhost:8080/api/products/1 | jq
+curl -s http://localhost/api/products/1 | jq
 ```
 **Attendu** : Détails complets du produit ID 1
 
 #### 3. Produits d'une catégorie
 ```bash
-curl -s http://localhost:8080/api/categories/1/products | jq '.member | length'
+curl -s http://localhost/api/categories/1/products | jq '.member | length'
 ```
 **Attendu** : Nombre de produits dans la catégorie 1
 
 #### 4. Filtrage par statut
 ```bash
-curl -s "http://localhost:8080/api/products?status=online" | jq '.totalItems'
+curl -s "http://localhost/api/products?status=online" | jq '.totalItems'
 ```
 **Attendu** : Nombre de produits en ligne
 
@@ -83,7 +83,7 @@ http://localhost:3000
 #### 1. Accès à l'admin
 ```bash
 # Ouvrir dans le navigateur
-http://localhost:8080/admin
+http://localhost/admin
 ```
 **Attendu** : Page de connexion ou dashboard EasyAdmin
 
@@ -145,10 +145,10 @@ docker-compose exec backend chown -R www-data:www-data /var/www/html/var
 ### **3. Tests API Production**
 ```bash
 # Tester l'API
-curl -s http://localhost:8080/api/products | jq '.totalItems'
+curl -s http://localhost/api/products | jq '.totalItems'
 
 # Tester une catégorie
-curl -s http://localhost:8080/api/categories/1 | jq '.name'
+curl -s http://localhost/api/categories/1 | jq '.name'
 ```
 
 ### **4. Tests Frontend Production**
@@ -231,7 +231,7 @@ docker system prune -a --volumes
 - [x] API `/api/products` répond avec JSON
 - [x] API `/api/categories` répond avec JSON
 - [x] Frontend accessible sur port 3000
-- [x] Admin accessible sur port 8080/admin
+- [x] Admin accessible sur port 80/admin
 
 ### Production (À tester)
 - [ ] Images Docker construites
@@ -251,28 +251,28 @@ docker system prune -a --volumes
 # Installer Apache Bench si nécessaire
 # sudo apt-get install apache2-utils
 
-ab -n 100 -c 10 http://localhost:8080/api/products
+ab -n 100 -c 10 http://localhost/api/products
 ```
 
 ### **2. Test des filtres API**
 ```bash
 # Par catégorie
-curl "http://localhost:8080/api/products?category=1"
+curl "http://localhost/api/products?category=1"
 
 # Par statut
-curl "http://localhost:8080/api/products?status=online"
+curl "http://localhost/api/products?status=online"
 
 # Combiné
-curl "http://localhost:8080/api/products?status=online&category=2"
+curl "http://localhost/api/products?status=online&category=2"
 ```
 
 ### **3. Test de pagination**
 ```bash
 # Page 1
-curl "http://localhost:8080/api/products?page=1"
+curl "http://localhost/api/products?page=1"
 
 # Page 2
-curl "http://localhost:8080/api/products?page=2"
+curl "http://localhost/api/products?page=2"
 ```
 
 ---
@@ -281,12 +281,12 @@ curl "http://localhost:8080/api/products?page=2"
 
 | Service | URL | Description |
 |---------|-----|-------------|
-| API Products | http://localhost:8080/api/products | Liste des produits |
-| API Categories | http://localhost:8080/api/categories | Liste des catégories |
-| API Product Detail | http://localhost:8080/api/products/{id} | Détail d'un produit |
-| API Category Products | http://localhost:8080/api/categories/{id}/products | Produits d'une catégorie |
+| API Products | http://localhost/api/products | Liste des produits |
+| API Categories | http://localhost/api/categories | Liste des catégories |
+| API Product Detail | http://localhost/api/products/{id} | Détail d'un produit |
+| API Category Products | http://localhost/api/categories/{id}/products | Produits d'une catégorie |
 | Frontend | http://localhost:3000 | Application React |
-| Admin | http://localhost:8080/admin | Backoffice EasyAdmin |
+| Admin | http://localhost/admin | Backoffice EasyAdmin |
 | MySQL | localhost:3307 | Base de données (user: shop_user, pass: shoppass123) |
 
 ---

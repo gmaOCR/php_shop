@@ -38,6 +38,11 @@
             <p class="mb-0 mt-2 small">Backoffice de gestion</p>
         </div>
         <div class="card-body p-4">
+                    <div id="networkError" class="alert alert-danger alert-dismissible fade" role="alert" style="display: none;">
+                        <i class="fas fa-exclamation-triangle"></i> <span id="networkErrorMessage"></span>
+                        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                    </div>
+
                     {% if error %}
                         <div class="alert alert-danger alert-dismissible fade show" role="alert">
                             <i class="fas fa-exclamation-triangle"></i> {{ error.messageKey|trans(error.messageData, 'security') }}
@@ -45,7 +50,7 @@
                         </div>
                     {% endif %}
 
-                    <form method="post">
+                    <form method="post" data-turbo="false" id="loginForm">
                         <div class="mb-4">
                             <label for="username" class="form-label"><i class="fas fa-user"></i> Nom d'utilisateur</label>
                             <input type="text" value="{{ last_username }}" name="_username" id="username" class="form-control form-control-lg" autocomplete="username" placeholder="admin" required autofocus>
@@ -58,7 +63,7 @@
 
                         <input type="hidden" name="_csrf_token" value="{{ csrf_token('authenticate') }}">
 
-                        <button class="btn btn-primary btn-lg w-100 mb-3" type="submit">
+                        <button class="btn btn-primary btn-lg w-100 mb-3" type="submit" id="submitBtn">
                             <i class="fas fa-sign-in-alt"></i> Se connecter
                         </button>
                     </form>
@@ -78,4 +83,39 @@
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const form = document.getElementById('loginForm');
+    const submitBtn = document.getElementById('submitBtn');
+    const networkError = document.getElementById('networkError');
+    const networkErrorMessage = document.getElementById('networkErrorMessage');
+
+    // Gestion des erreurs réseau pour les navigateurs sans Turbo
+    form.addEventListener('submit', function(e) {
+        // Désactiver le bouton pendant la soumission
+        submitBtn.disabled = true;
+        submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Connexion...';
+        
+        // Cacher les erreurs précédentes
+        networkError.style.display = 'none';
+        networkError.classList.remove('show');
+    });
+
+    // Intercepter les erreurs Turbo si présent
+    document.addEventListener('turbo:fetch-request-error', function(event) {
+        event.preventDefault();
+        networkErrorMessage.textContent = 'Erreur de connexion au serveur. Vérifiez que les services sont démarrés et réessayez.';
+        networkError.style.display = 'block';
+        networkError.classList.add('show');
+        submitBtn.disabled = false;
+        submitBtn.innerHTML = '<i class="fas fa-sign-in-alt"></i> Se connecter';
+    });
+
+    // Réactiver le bouton si erreur standard
+    window.addEventListener('pageshow', function() {
+        submitBtn.disabled = false;
+        submitBtn.innerHTML = '<i class="fas fa-sign-in-alt"></i> Se connecter';
+    });
+});
+</script>
 {% endblock %}
