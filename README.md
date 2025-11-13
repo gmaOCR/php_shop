@@ -2,8 +2,6 @@
 
 Application e-commerce fullstack moderne avec backend Symfony 6.4 + EasyAdmin et frontend React 18 + Vite.
 
-[![CI](https://github.com/gmaOCR/php_shop/workflows/CI/badge.svg)](https://github.com/gmaOCR/php_shop/actions)
-
 ## 🏗️ Architecture
 
 - **Backend**: Symfony 6.4, MySQL 8, EasyAdmin, ApiPlatform
