@@ -21,8 +21,34 @@ export const getCategoryProducts = async (categoryId, page = 1) => {
 };
 
 export const getProducts = async (params = {}) => {
-  const response = await apiClient.get('/products', { params });
-  return response.data;
+  // Charger toutes les pages si l'API est paginée
+  let allProducts = [];
+  let page = 1;
+  let hasMore = true;
+  
+  while (hasMore) {
+    const response = await apiClient.get('/products', { 
+      params: { ...params, page } 
+    });
+    
+    const products = response.data.member || response.data['hydra:member'] || [];
+    allProducts = [...allProducts, ...products];
+    
+    // Vérifier s'il y a une page suivante
+    const totalItems = response.data.totalItems || response.data['hydra:totalItems'] || 0;
+    
+    if (allProducts.length >= totalItems || products.length === 0) {
+      hasMore = false;
+    } else {
+      page++;
+    }
+  }
+  
+  return { 
+    member: allProducts,
+    'hydra:member': allProducts,
+    totalItems: allProducts.length 
+  };
 };
 
 export const getProduct = async (id) => {

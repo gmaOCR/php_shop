@@ -25,7 +25,7 @@ function App() {
           </Routes>
         </main>
         <footer className="app-footer">
-          <p>&copy; 2025 Shop - Test Technique PROXIMITY</p>
+          <p>&copy; 2025 Shop - Test Technique PROX-I</p>
         </footer>
       </div>
     </Router>
