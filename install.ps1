@@ -61,9 +61,26 @@ foreach ($p in 80,3000,3307) {
 }
 
 # Copy .env files if missing
-if (-not (Test-Path .env)) { Copy-Item .env.dist .env; Write-Ok ".env créé" } else { Write-Warn ".env existe déjà" }
-if (-not (Test-Path backend/.env)) { Copy-Item backend/.env.dist backend/.env; Write-Ok "backend/.env créé" } else { Write-Warn "backend/.env existe déjà" }
-if (-not (Test-Path frontend/.env)) { Copy-Item frontend/.env.example frontend/.env; Write-Ok "frontend/.env créé" } else { Write-Warn "frontend/.env existe déjà" }
+if (-not (Test-Path .env)) { 
+    Copy-Item .env.dist .env
+    Write-Ok ".env créé" 
+} else { 
+    Write-Warn ".env existe déjà" 
+}
+
+if (-not (Test-Path backend/.env)) { 
+    Copy-Item backend/.env.dist backend/.env
+    Write-Ok "backend/.env créé" 
+} else { 
+    Write-Warn "backend/.env existe déjà (vérifiez ADMIN_PASSWORD_HASH)" 
+}
+
+if (-not (Test-Path frontend/.env)) { 
+    Copy-Item frontend/.env.example frontend/.env
+    Write-Ok "frontend/.env créé" 
+} else { 
+    Write-Warn "frontend/.env existe déjà" 
+}
 
 # Start docker compose
 Write-Ok "Démarrage des services Docker..."
