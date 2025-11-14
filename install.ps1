@@ -81,20 +81,79 @@ while ($true) {
 
 # Run composer & doctrine & fixtures inside backend container
 Write-Ok "Installation dépendances backend..."
-docker exec shop_backend_dev composer install --no-interaction --prefer-dist --optimize-autoloader
-Write-Ok "Composer installé"
+try {
+    Write-Ok "Installation dépendances backend (sans scripts)..."
+    # Installer sans exécuter les scripts automatiques qui peuvent nécessiter la DB
+    & docker exec shop_backend_dev composer install --no-scripts --no-interaction --prefer-dist --optimize-autoloader
+    Write-Ok "Dépendances backend installées (scripts différés)"
 
-Write-Ok "Création DB et migrations"
-docker exec shop_backend_dev php bin/console doctrine:database:create --if-not-exists --no-interaction
-docker exec shop_backend_dev php bin/console doctrine:migrations:migrate --no-interaction
+    Write-Ok "Vérification / création utilisateur MySQL si nécessaire..."
+    $rootPw = ""
+    $mysqlDb = ""
+    $mysqlUser = ""
+    $mysqlPw = ""
+    try { $rootPw = (& docker exec shop_mysql_dev printenv MYSQL_ROOT_PASSWORD) -as [string] } catch {}
+    try { $mysqlDb = (& docker exec shop_mysql_dev printenv MYSQL_DATABASE) -as [string] } catch {}
+    try { $mysqlUser = (& docker exec shop_mysql_dev printenv MYSQL_USER) -as [string] } catch {}
+    try { $mysqlPw = (& docker exec shop_mysql_dev printenv MYSQL_PASSWORD) -as [string] } catch {}
 
-Write-Ok "Chargement des fixtures"
-docker exec shop_backend_dev php bin/console doctrine:fixtures:load --no-interaction
+    if (-not $rootPw) { $rootPw = 'root_password' }
+    if (-not $mysqlDb) { $mysqlDb = 'shop_db' }
+    if (-not $mysqlUser) { $mysqlUser = 'shop_user' }
+    if (-not $mysqlPw) { $mysqlPw = 'shop_password' }
 
-# Frontend deps
-Write-Ok "Installation dépendances frontend..."
-docker exec shop_frontend_dev npm install --silent
+    $canConnect = $false
+    try {
+        & docker exec shop_mysql_dev mysql -u"$mysqlUser" -p"$mysqlPw" -e "SELECT 1;" > $null 2>&1
+        $canConnect = $true
+    } catch {
+        $canConnect = $false
+    }
 
-Write-Ok "Installation terminée. URLs : http://localhost (frontend), http://localhost/admin (backoffice), http://localhost/api"
+    if ($canConnect) {
+        Write-Ok "L'utilisateur $mysqlUser peut se connecter à MySQL"
+    } else {
+        Write-Warn "L'utilisateur $mysqlUser ne peut pas se connecter. Tentative de création via root..."
+        try {
+            & docker exec shop_mysql_dev mysql -uroot -p"$rootPw" -e "CREATE USER IF NOT EXISTS '$mysqlUser'@'%' IDENTIFIED BY '$mysqlPw'; GRANT ALL PRIVILEGES ON \`$mysqlDb\`.* TO '$mysqlUser'@'%'; FLUSH PRIVILEGES;" > $null 2>&1
+            Write-Ok "Utilisateur $mysqlUser créé / privilèges accordés"
+        } catch {
+            Write-Err "Impossible de créer l'utilisateur via root. Vous pouvez :"; 
+            Write-Host "  - vérifier le mot de passe root dans vos variables d'environnement"; 
+            Write-Host "  - ou réinitialiser le volume MySQL avec: docker-compose -f docker-compose.dev.yml down -v";
+        }
+    }
+
+    Write-Ok "Création DB et exécution des migrations"
+    & docker exec shop_backend_dev php bin/console doctrine:database:create --if-not-exists --no-interaction
+    & docker exec shop_backend_dev php bin/console doctrine:migrations:migrate --no-interaction
+
+    Write-Ok "Chargement des fixtures"
+    & docker exec shop_backend_dev php bin/console doctrine:fixtures:load --no-interaction
+
+    Write-Ok "Exécution des scripts post-install (via composer)"
+    try {
+        & docker exec shop_backend_dev composer run-script post-install-cmd > $null 2>&1
+        Write-Ok "Scripts post-install exécutés via Composer"
+    } catch {
+        Write-Warn "composer run-script post-install-cmd a échoué, tentative d'exécution manuelle des commandes symfony..."
+        # Tentatives manuelles (non-critiques)
+        & docker exec shop_backend_dev php bin/console cache:clear --no-interaction 2>$null || Write-Warn "cache:clear a échoué"
+        & docker exec shop_backend_dev php bin/console cache:warmup --no-interaction 2>$null || Write-Warn "cache:warmup a échoué"
+        & docker exec shop_backend_dev php bin/console assets:install public --no-interaction 2>$null || Write-Warn "assets:install a échoué"
+        & docker exec shop_backend_dev php bin/console importmap:install --no-interaction 2>$null || Write-Warn "importmap:install a échoué"
+        Write-Ok "Tentative manuelle des scripts post-install terminée (erreurs non fatales ignorées)"
+    }
+
+    # Frontend deps
+    Write-Ok "Installation dépendances frontend..."
+    & docker exec shop_frontend_dev npm install --silent
+
+    Write-Ok "Installation terminée. URLs : http://localhost (frontend), http://localhost/admin (backoffice), http://localhost/api"
+
+} catch {
+    Write-Err "Erreur durant l'installation : $_"
+    exit 1
+}
 
 Write-Host "Fin du script"

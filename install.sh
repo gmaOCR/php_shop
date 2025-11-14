@@ -119,30 +119,98 @@ done
 echo ""
 print_success "MySQL est prêt !"
 
-# Installer les dépendances backend
-print_info "Installation des dépendances backend (composer install)..."
-docker exec shop_backend_dev composer install --no-interaction --prefer-dist --optimize-autoloader
-print_success "Dépendances backend installées"
+# Installer les dépendances backend (sans exécuter les scripts Composer maintenant)
+print_info "Installation des dépendances backend (composer install --no-scripts)..."
+# Workaround: avoid OCI runtime exec failure when the host current directory
+# is a mount point shared with the container. Some runtimes refuse to exec
+# if the client's cwd is outside the container mount namespace.
+# We temporarily change to /tmp on the host before calling docker exec.
+OLD_PWD="$(pwd)"
+cd /tmp || true
+# IMPORTANT: use --no-scripts to éviter le cache:clear automatique qui exige la DB
+docker exec shop_backend_dev composer install --no-scripts --no-interaction --prefer-dist --optimize-autoloader
+print_success "Dépendances backend installées (scripts différés)"
+cd "$OLD_PWD" || true
 
 # Créer la base de données
 print_info "Création de la base de données..."
+## Avant de créer la BDD, vérifier que l'utilisateur MySQL configuré existe et peut se connecter.
+print_info "Vérification de l'utilisateur MySQL et création si nécessaire..."
+OLD_PWD="$(pwd)"
+cd /tmp || true
+
+# Récupérer les variables depuis le conteneur MySQL si elles existent, sinon utiliser des valeurs par défaut
+ROOT_PW="$(docker exec shop_mysql_dev printenv MYSQL_ROOT_PASSWORD 2>/dev/null || true)"
+MYSQL_DB="$(docker exec shop_mysql_dev printenv MYSQL_DATABASE 2>/dev/null || true)"
+MYSQL_USER_ENV="$(docker exec shop_mysql_dev printenv MYSQL_USER 2>/dev/null || true)"
+MYSQL_PW_ENV="$(docker exec shop_mysql_dev printenv MYSQL_PASSWORD 2>/dev/null || true)"
+
+ROOT_PW="${ROOT_PW:-root_password}"
+MYSQL_DB="${MYSQL_DB:-shop_db}"
+MYSQL_USER_ENV="${MYSQL_USER_ENV:-shop_user}"
+MYSQL_PW_ENV="${MYSQL_PW_ENV:-shop_password}"
+
+print_info "Test de connexion MySQL en tant que ${MYSQL_USER_ENV}..."
+if docker exec shop_mysql_dev mysql -u"${MYSQL_USER_ENV}" -p"${MYSQL_PW_ENV}" -e "SELECT 1;" >/dev/null 2>&1; then
+    print_success "L'utilisateur ${MYSQL_USER_ENV} peut se connecter à MySQL"
+else
+    print_warning "L'utilisateur ${MYSQL_USER_ENV} ne peut pas se connecter. Tentative de création via root..."
+    # Tenter de créer l'utilisateur et lui donner les privilèges requis (non destructif)
+    if docker exec shop_mysql_dev mysql -uroot -p"${ROOT_PW}" -e "CREATE USER IF NOT EXISTS '${MYSQL_USER_ENV}'@'%' IDENTIFIED BY '${MYSQL_PW_ENV}'; GRANT ALL PRIVILEGES ON \`${MYSQL_DB}\`.* TO '${MYSQL_USER_ENV}'@'%'; FLUSH PRIVILEGES;" >/dev/null 2>&1; then
+        print_success "Utilisateur ${MYSQL_USER_ENV} créé / privilèges accordés"
+    else
+        print_error "Impossible de créer l'utilisateur via root. Vous pouvez:"
+        echo "  - vérifier le mot de passe root dans vos variables d'environnement" 
+        echo "  - ou réinitialiser le volume MySQL avec: docker-compose -f docker-compose.dev.yml down -v"
+        # ne pas quitter immédiatement — la commande suivante (doctrine:database:create) échouera si la création n'a pas fonctionné
+    fi
+fi
+
 docker exec shop_backend_dev php bin/console doctrine:database:create --if-not-exists --no-interaction
 print_success "Base de données créée"
+cd "$OLD_PWD" || true
 
 # Exécuter les migrations
 print_info "Exécution des migrations..."
+OLD_PWD="$(pwd)"
+cd /tmp || true
 docker exec shop_backend_dev php bin/console doctrine:migrations:migrate --no-interaction
 print_success "Migrations exécutées"
+cd "$OLD_PWD" || true
 
 # Charger les fixtures
 print_info "Chargement des fixtures (5 catégories + 20 produits)..."
+OLD_PWD="$(pwd)"
+cd /tmp || true
 docker exec shop_backend_dev php bin/console doctrine:fixtures:load --no-interaction
 print_success "Fixtures chargées"
+cd "$OLD_PWD" || true
+
+# Maintenant que la base et les données existent, exécuter les scripts Composer
+# qui avaient été différés (cache:clear, assets:install, importmap:install, ...).
+print_info "Exécution des scripts post-install (cache, assets, importmap)..."
+OLD_PWD="$(pwd)"
+cd /tmp || true
+if docker exec shop_backend_dev composer run-script post-install-cmd >/dev/null 2>&1; then
+    print_success "Scripts post-install exécutés via Composer"
+else
+    print_warning "composer run-script post-install-cmd a échoué, tentative d'exécution manuelle des commandes symfony..."
+    # Tentatives manuelles (non-critiques) — ignorer les erreurs individuelles
+    docker exec shop_backend_dev php bin/console cache:clear --no-interaction || true
+    docker exec shop_backend_dev php bin/console cache:warmup --no-interaction || true
+    docker exec shop_backend_dev php bin/console assets:install public --no-interaction || true
+    docker exec shop_backend_dev php bin/console importmap:install --no-interaction || true
+    print_success "Tentative manuelle des scripts post-install terminée (erreurs non fatales ignorées)"
+fi
+cd "$OLD_PWD" || true
 
 # Installer les dépendances frontend (optionnel, déjà fait au build)
 print_info "Vérification des dépendances frontend..."
+OLD_PWD="$(pwd)"
+cd /tmp || true
 docker exec shop_frontend_dev npm install --silent
 print_success "Dépendances frontend à jour"
+cd "$OLD_PWD" || true
 
 # Résumé final
 echo ""
