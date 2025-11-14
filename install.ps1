@@ -12,6 +12,10 @@ This script attempts to mirror the behavior of install.sh for Windows:
 
 $ErrorActionPreference = 'Stop'
 
+# Fix UTF-8 encoding for proper display of accents on Windows
+[Console]::OutputEncoding = [System.Text.Encoding]::UTF8
+$OutputEncoding = [System.Text.Encoding]::UTF8
+
 function Write-Ok($msg) { Write-Host "[OK]    $msg" -ForegroundColor Green }
 function Write-Warn($msg) { Write-Host "[WARN]  $msg" -ForegroundColor Yellow }
 function Write-Err($msg) { Write-Host "[ERROR] $msg" -ForegroundColor Red }
@@ -24,9 +28,9 @@ if (-not (Get-Command docker -ErrorAction SilentlyContinue)) {
 }
 
 # Compose: prefer docker compose (v2)
-$dockerComposeCmd = 'docker compose'
+$dockerComposeCmd = 'docker-compose'
 try {
-    docker compose version > $null 2>&1
+    docker-compose version > $null 2>&1
 } catch {
     if (-not (Get-Command docker-compose -ErrorAction SilentlyContinue)) {
         Write-Err "Docker Compose introuvable (ni 'docker compose' ni 'docker-compose')."
@@ -114,38 +118,58 @@ try {
         Write-Ok "L'utilisateur $mysqlUser peut se connecter à MySQL"
     } else {
         Write-Warn "L'utilisateur $mysqlUser ne peut pas se connecter. Tentative de création via root..."
-        try {
-            # Robust approach: write SQL to a temporary file, copy it into the mysql container
-            # and execute it there. This avoids PowerShell quoting/backtick issues.
-            $tmpName = "create_mysql_user_{0}.sql" -f ([System.Guid]::NewGuid().ToString())
-            $tempFile = Join-Path -Path $env:TEMP -ChildPath $tmpName
+        
+        # Robust approach: write SQL to a temporary file, copy it into the mysql container
+        # and execute it there. This avoids PowerShell quoting/backtick issues.
+        $tmpName = "create_mysql_user_{0}.sql" -f ([System.Guid]::NewGuid().ToString())
+        $tempFile = Join-Path -Path $env:TEMP -ChildPath $tmpName
+        $containerSqlPath = "/tmp/$tmpName"
 
-            $sql = @"
+        $sql = @"
 CREATE USER IF NOT EXISTS '$mysqlUser'@'%' IDENTIFIED BY '$mysqlPw';
-GRANT ALL PRIVILEGES ON $mysqlDb.* TO '$mysqlUser'@'%';
+GRANT ALL PRIVILEGES ON ``$mysqlDb``.* TO '$mysqlUser'@'%';
 FLUSH PRIVILEGES;
 "@
 
-            Set-Content -Path $tempFile -Value $sql -Encoding UTF8
+        try {
+            Set-Content -Path $tempFile -Value $sql -Encoding UTF8 -NoNewline
+            Write-Host "  [DEBUG] Fichier SQL temporaire créé: $tempFile"
 
-            # copy file into container
-            & docker cp $tempFile shop_mysql_dev:/tmp/$tmpName > $null 2>&1
+            # copy file into container with error capture
+            $cpOutput = & docker cp $tempFile "shop_mysql_dev:$containerSqlPath" 2>&1
+            if ($LASTEXITCODE -ne 0) {
+                throw "docker cp failed: $cpOutput"
+            }
+            Write-Host "  [DEBUG] Fichier copié dans le conteneur MySQL"
 
-            # execute SQL inside container using a POSIX shell so redirection works
-            & docker exec shop_mysql_dev sh -c "mysql -uroot -p'$rootPw' < /tmp/$tmpName" > $null 2>&1
-            if ($LASTEXITCODE -eq 0) {
+            # execute SQL inside container and capture stderr
+            $execOutput = & docker exec shop_mysql_dev sh -c "mysql -uroot -p'$rootPw' < $containerSqlPath 2>&1"
+            $execExitCode = $LASTEXITCODE
+            
+            Write-Host "  [DEBUG] Code de sortie mysql: $execExitCode"
+            if ($execOutput) {
+                Write-Host "  [DEBUG] Sortie mysql: $execOutput"
+            }
+
+            if ($execExitCode -eq 0) {
                 Write-Ok "Utilisateur $mysqlUser créé / privilèges accordés"
             } else {
-                throw "mysql command failed with exit code $LASTEXITCODE"
+                Write-Err "La commande mysql a échoué (exit code $execExitCode)"
+                Write-Host "  Sortie: $execOutput"
+                Write-Host "  Conseil: Réinitialisez le volume MySQL avec:"
+                Write-Host "           docker-compose -f docker-compose.dev.yml down -v"
             }
         } catch {
-            Write-Err "Impossible de créer l'utilisateur via root. Vous pouvez :"; 
-            Write-Host "  - vérifier le mot de passe root dans vos variables d'environnement"; 
-            Write-Host "  - ou réinitialiser le volume MySQL avec: docker-compose -f docker-compose.dev.yml down -v";
+            Write-Err "Erreur lors de la création de l'utilisateur MySQL: $_"
+            Write-Host "  - Vérifiez que le conteneur shop_mysql_dev est démarré"
+            Write-Host "  - Vérifiez le mot de passe root (variable MYSQL_ROOT_PASSWORD)"
+            Write-Host "  - Ou réinitialisez: docker-compose -f docker-compose.dev.yml down -v"
         } finally {
             # cleanup temp file on host and container (best-effort)
-            try { if (Test-Path $tempFile) { Remove-Item $tempFile -ErrorAction SilentlyContinue } } catch {}
-            try { & docker exec shop_mysql_dev rm -f /tmp/$tmpName > $null 2>&1 } catch {}
+            if (Test-Path $tempFile) { 
+                try { Remove-Item $tempFile -ErrorAction SilentlyContinue } catch {}
+            }
+            try { & docker exec shop_mysql_dev rm -f $containerSqlPath 2>$null } catch {}
         }
     }
 
@@ -158,24 +182,37 @@ FLUSH PRIVILEGES;
 
     Write-Ok "Exécution des scripts post-install (via composer)"
     try {
-        & docker exec shop_backend_dev composer run-script post-install-cmd > $null 2>&1
-        Write-Ok "Scripts post-install exécutés via Composer"
+        & docker exec shop_backend_dev composer run-script post-install-cmd 2>&1 | Out-Null
+        if ($LASTEXITCODE -eq 0) {
+            Write-Ok "Scripts post-install exécutés via Composer"
+        } else {
+            throw "composer post-install failed"
+        }
     } catch {
         Write-Warn "composer run-script post-install-cmd a échoué, tentative d'exécution manuelle des commandes symfony..."
-        # Tentatives manuelles (non-critiques)
-    & docker exec shop_backend_dev php bin/console cache:clear --no-interaction 2>$null
-    if ($LASTEXITCODE -ne 0) { Write-Warn "cache:clear a échoué" }
+        
+        # Tentatives manuelles (non-critiques) - chaque commande est isolée
+        try {
+            & docker exec shop_backend_dev php bin/console cache:clear --no-interaction 2>$null
+            if ($LASTEXITCODE -ne 0) { Write-Warn "cache:clear a échoué (exit: $LASTEXITCODE)" }
+        } catch { Write-Warn "cache:clear erreur: $_" }
 
-    & docker exec shop_backend_dev php bin/console cache:warmup --no-interaction 2>$null
-    if ($LASTEXITCODE -ne 0) { Write-Warn "cache:warmup a échoué" }
+        try {
+            & docker exec shop_backend_dev php bin/console cache:warmup --no-interaction 2>$null
+            if ($LASTEXITCODE -ne 0) { Write-Warn "cache:warmup a échoué (exit: $LASTEXITCODE)" }
+        } catch { Write-Warn "cache:warmup erreur: $_" }
 
-    & docker exec shop_backend_dev php bin/console assets:install public --no-interaction 2>$null
-    if ($LASTEXITCODE -ne 0) { Write-Warn "assets:install a échoué" }
+        try {
+            & docker exec shop_backend_dev php bin/console assets:install public --no-interaction 2>$null
+            if ($LASTEXITCODE -ne 0) { Write-Warn "assets:install a échoué (exit: $LASTEXITCODE)" }
+        } catch { Write-Warn "assets:install erreur: $_" }
 
-    & docker exec shop_backend_dev php bin/console importmap:install --no-interaction 2>$null
-    if ($LASTEXITCODE -ne 0) { Write-Warn "importmap:install a échoué" }
+        try {
+            & docker exec shop_backend_dev php bin/console importmap:install --no-interaction 2>$null
+            if ($LASTEXITCODE -ne 0) { Write-Warn "importmap:install a échoué (exit: $LASTEXITCODE)" }
+        } catch { Write-Warn "importmap:install erreur: $_" }
 
-    Write-Ok "Tentative manuelle des scripts post-install terminée (erreurs non fatales ignorées)"
+        Write-Ok "Tentative manuelle des scripts post-install terminée (erreurs non fatales ignorées)"
     }
 
     # Frontend deps
