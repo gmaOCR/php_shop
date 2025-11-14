@@ -42,8 +42,10 @@ const Catalog = () => {
         if (selectedCategory) params.category = selectedCategory;
         if (selectedStatus) params.status = selectedStatus;
         
+        // Charge tous les produits (fetchAll=true par défaut pour compatibilité)
+        // Pour passer à la pagination serveur, utilisez: getProducts(params, { fetchAll: false, page })
         const data = await getProducts(params);
-        let productsList = data.member || data['hydra:member'] || [];
+        let productsList = data.items || data.member || data['hydra:member'] || [];
         
         // Recherche côté client
         if (searchTerm) {

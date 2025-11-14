@@ -5,3 +5,15 @@ api_platform:
         stateless: true
         cache_headers:
             vary: ['Content-Type', 'Authorization', 'Origin']
+        # Par défaut, toutes les opérations nécessitent une authentification
+        # Seules les opérations explicitement marquées avec security: "is_granted('PUBLIC_ACCESS')"
+        # ou sans attribut security seront publiques (comme nos Get/GetCollection actuels)
+        pagination_items_per_page: 10
+        pagination_client_enabled: true
+        pagination_client_items_per_page: true
+        pagination_maximum_items_per_page: 100
+    # Configuration de sécurité globale
+    # Toute opération POST/PUT/DELETE/PATCH nécessitera une authentification par défaut
+    # si elle n'est pas explicitement rendue publique
+    swagger:
+        versions: [3]

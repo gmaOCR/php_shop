@@ -18,8 +18,12 @@ const ProductsByCategory = () => {
     const fetchProducts = async () => {
       setLoading(true);
       try {
-        const data = await getCategoryProducts(categoryId, page);
-        let productsList = data['hydra:member'] || data.member || [];
+  const data = await getCategoryProducts(categoryId, page);
+  // Supporte plusieurs formes de retour :
+  // - API Platform JSON-LD: data['hydra:member']
+  // - notre helper getCategoryProducts: data.items
+  // - backward-compat: data.member
+  let productsList = data.items || data['hydra:member'] || data.member || [];
         
         // Tri côté client
         productsList = [...productsList].sort((a, b) => {
@@ -34,7 +38,7 @@ const ProductsByCategory = () => {
         });
         
         setProducts(productsList);
-        setTotalItems(data['hydra:totalItems'] || data.totalItems || productsList.length);
+  setTotalItems(data['hydra:totalItems'] || data.totalItems || data.totalItems || productsList.length);
       } catch (err) {
         setError('Erreur lors du chargement des produits');
         console.error(err);

@@ -2,9 +2,16 @@ nelmio_cors:
     defaults:
         origin_regex: true
         allow_origin: ['%env(CORS_ALLOW_ORIGIN)%']
-        allow_methods: ['GET', 'OPTIONS', 'POST', 'PUT', 'PATCH', 'DELETE']
-        allow_headers: ['Content-Type', 'Authorization']
-        expose_headers: ['Link']
+        # IMPORTANT: Seul GET est autorisé publiquement côté CORS
+        # POST/PUT/DELETE nécessiteront une authentification (token, session)
+        allow_methods: ['GET', 'OPTIONS']
+        allow_headers: ['Content-Type', 'Authorization', 'Accept']
+        expose_headers: ['Link', 'X-Total-Count']
         max_age: 3600
     paths:
-        '^/': null
+        '^/api':
+            # Routes API : GET/OPTIONS uniquement pour clients non authentifiés
+            allow_methods: ['GET', 'OPTIONS']
+        '^/':
+            # Autres routes (backoffice, etc.) : méthodes complètes si authentifié
+            allow_methods: ['GET', 'OPTIONS', 'POST', 'PUT', 'PATCH', 'DELETE']
