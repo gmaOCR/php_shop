@@ -115,12 +115,37 @@ try {
     } else {
         Write-Warn "L'utilisateur $mysqlUser ne peut pas se connecter. Tentative de création via root..."
         try {
-            & docker exec shop_mysql_dev mysql -uroot -p"$rootPw" -e "CREATE USER IF NOT EXISTS '$mysqlUser'@'%' IDENTIFIED BY '$mysqlPw'; GRANT ALL PRIVILEGES ON \`$mysqlDb\`.* TO '$mysqlUser'@'%'; FLUSH PRIVILEGES;" > $null 2>&1
-            Write-Ok "Utilisateur $mysqlUser créé / privilèges accordés"
+            # Robust approach: write SQL to a temporary file, copy it into the mysql container
+            # and execute it there. This avoids PowerShell quoting/backtick issues.
+            $tmpName = "create_mysql_user_{0}.sql" -f ([System.Guid]::NewGuid().ToString())
+            $tempFile = Join-Path -Path $env:TEMP -ChildPath $tmpName
+
+            $sql = @"
+CREATE USER IF NOT EXISTS '$mysqlUser'@'%' IDENTIFIED BY '$mysqlPw';
+GRANT ALL PRIVILEGES ON $mysqlDb.* TO '$mysqlUser'@'%';
+FLUSH PRIVILEGES;
+"@
+
+            Set-Content -Path $tempFile -Value $sql -Encoding UTF8
+
+            # copy file into container
+            & docker cp $tempFile shop_mysql_dev:/tmp/$tmpName > $null 2>&1
+
+            # execute SQL inside container using a POSIX shell so redirection works
+            & docker exec shop_mysql_dev sh -c "mysql -uroot -p'$rootPw' < /tmp/$tmpName" > $null 2>&1
+            if ($LASTEXITCODE -eq 0) {
+                Write-Ok "Utilisateur $mysqlUser créé / privilèges accordés"
+            } else {
+                throw "mysql command failed with exit code $LASTEXITCODE"
+            }
         } catch {
             Write-Err "Impossible de créer l'utilisateur via root. Vous pouvez :"; 
             Write-Host "  - vérifier le mot de passe root dans vos variables d'environnement"; 
             Write-Host "  - ou réinitialiser le volume MySQL avec: docker-compose -f docker-compose.dev.yml down -v";
+        } finally {
+            # cleanup temp file on host and container (best-effort)
+            try { if (Test-Path $tempFile) { Remove-Item $tempFile -ErrorAction SilentlyContinue } } catch {}
+            try { & docker exec shop_mysql_dev rm -f /tmp/$tmpName > $null 2>&1 } catch {}
         }
     }
 
@@ -138,11 +163,19 @@ try {
     } catch {
         Write-Warn "composer run-script post-install-cmd a échoué, tentative d'exécution manuelle des commandes symfony..."
         # Tentatives manuelles (non-critiques)
-        & docker exec shop_backend_dev php bin/console cache:clear --no-interaction 2>$null || Write-Warn "cache:clear a échoué"
-        & docker exec shop_backend_dev php bin/console cache:warmup --no-interaction 2>$null || Write-Warn "cache:warmup a échoué"
-        & docker exec shop_backend_dev php bin/console assets:install public --no-interaction 2>$null || Write-Warn "assets:install a échoué"
-        & docker exec shop_backend_dev php bin/console importmap:install --no-interaction 2>$null || Write-Warn "importmap:install a échoué"
-        Write-Ok "Tentative manuelle des scripts post-install terminée (erreurs non fatales ignorées)"
+    & docker exec shop_backend_dev php bin/console cache:clear --no-interaction 2>$null
+    if ($LASTEXITCODE -ne 0) { Write-Warn "cache:clear a échoué" }
+
+    & docker exec shop_backend_dev php bin/console cache:warmup --no-interaction 2>$null
+    if ($LASTEXITCODE -ne 0) { Write-Warn "cache:warmup a échoué" }
+
+    & docker exec shop_backend_dev php bin/console assets:install public --no-interaction 2>$null
+    if ($LASTEXITCODE -ne 0) { Write-Warn "assets:install a échoué" }
+
+    & docker exec shop_backend_dev php bin/console importmap:install --no-interaction 2>$null
+    if ($LASTEXITCODE -ne 0) { Write-Warn "importmap:install a échoué" }
+
+    Write-Ok "Tentative manuelle des scripts post-install terminée (erreurs non fatales ignorées)"
     }
 
     # Frontend deps

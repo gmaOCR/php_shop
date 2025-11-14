@@ -3,7 +3,7 @@ import '@testing-library/jest-dom';
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router-dom';
-import { vi } from 'vitest';
+import { vi, describe, it, afterEach, expect } from 'vitest';
 
 // Mock du module API
 vi.mock('../api/api', () => ({
