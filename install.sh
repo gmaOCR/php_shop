@@ -195,10 +195,16 @@ if docker exec shop_backend_dev composer run-script post-install-cmd >/dev/null 
     print_success "Scripts post-install exécutés via Composer"
 else
     print_warning "composer run-script post-install-cmd a échoué, tentative d'exécution manuelle des commandes symfony..."
+    # Nettoyer le répertoire assets existant pour éviter "Directory not empty"
+    docker exec shop_backend_dev rm -rf public/bundles 2>/dev/null || true
     # Tentatives manuelles (non-critiques) — ignorer les erreurs individuelles
     docker exec shop_backend_dev php bin/console cache:clear --no-interaction || true
     docker exec shop_backend_dev php bin/console cache:warmup --no-interaction || true
-    docker exec shop_backend_dev php bin/console assets:install public --no-interaction || true
+    # Assets install avec retry en --force si échec
+    if ! docker exec shop_backend_dev php bin/console assets:install public --no-interaction 2>/dev/null; then
+        echo "⚠️  Réessai assets:install avec --force..."
+        docker exec shop_backend_dev php bin/console assets:install public --no-interaction --force || true
+    fi
     docker exec shop_backend_dev php bin/console importmap:install --no-interaction || true
     print_success "Tentative manuelle des scripts post-install terminée (erreurs non fatales ignorées)"
 fi

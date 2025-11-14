@@ -220,8 +220,17 @@ FLUSH PRIVILEGES;
         } catch { Write-Warn "cache:warmup erreur: $_" }
 
         try {
+            # Nettoyer le répertoire assets existant pour éviter "Directory not empty"
+            Write-Host "  Nettoyage du répertoire assets..."
+            & docker exec shop_backend_dev rm -rf public/bundles 2>$null
+            
+            # Installer les assets avec --symlink si possible, sinon copie
             & docker exec shop_backend_dev php bin/console assets:install public --no-interaction 2>$null
-            if ($LASTEXITCODE -ne 0) { Write-Warn "assets:install a échoué (exit: $LASTEXITCODE)" }
+            if ($LASTEXITCODE -ne 0) { 
+                Write-Warn "assets:install a échoué (exit: $LASTEXITCODE), réessai en force..." 
+                # Réessayer en forçant
+                & docker exec shop_backend_dev php bin/console assets:install public --no-interaction --force 2>$null
+            }
         } catch { Write-Warn "assets:install erreur: $_" }
 
         try {
