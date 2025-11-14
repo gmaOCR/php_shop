@@ -1,0 +1,5 @@
+doctrine:
+    dbal:
+        # Base de données en mémoire pour les tests (plus rapide)
+        # Ou utilisez une vraie DB de test si nécessaire
+        dbname_suffix: '_test%env(default::TEST_TOKEN)%'

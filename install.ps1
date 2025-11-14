@@ -60,26 +60,26 @@ foreach ($p in 80,3000,3307) {
     } else { Write-Ok "Port $p disponible" }
 }
 
-# Copy .env files if missing
+# Copy .env files from .dist templates if missing
 if (-not (Test-Path .env)) { 
     Copy-Item .env.dist .env
-    Write-Ok ".env créé" 
+    Write-Ok ".env créé depuis .env.dist" 
 } else { 
-    Write-Warn ".env existe déjà" 
+    Write-Warn ".env existe déjà (conservation des valeurs locales)" 
 }
 
 if (-not (Test-Path backend/.env)) { 
     Copy-Item backend/.env.dist backend/.env
-    Write-Ok "backend/.env créé" 
+    Write-Ok "backend/.env créé depuis backend/.env.dist" 
 } else { 
-    Write-Warn "backend/.env existe déjà (vérifiez ADMIN_PASSWORD_HASH)" 
+    Write-Warn "backend/.env existe déjà (conservation des valeurs locales)" 
 }
 
 if (-not (Test-Path frontend/.env)) { 
-    Copy-Item frontend/.env.example frontend/.env
-    Write-Ok "frontend/.env créé" 
+    Copy-Item frontend/.env.dist frontend/.env
+    Write-Ok "frontend/.env créé depuis frontend/.env.dist" 
 } else { 
-    Write-Warn "frontend/.env existe déjà" 
+    Write-Warn "frontend/.env existe déjà (conservation des valeurs locales)" 
 }
 
 # Start docker compose

@@ -74,28 +74,28 @@ check_port 80
 check_port 3000
 check_port 3307
 
-# Copier les fichiers d'environnement
+# Copier les fichiers d'environnement depuis les templates .dist
 print_info "Configuration des fichiers d'environnement..."
 
 if [ ! -f .env ]; then
     cp .env.dist .env
-    print_success ".env créé"
+    print_success ".env créé depuis .env.dist"
 else
-    print_warning ".env existe déjà, conservation"
+    print_warning ".env existe déjà, conservation des valeurs locales"
 fi
 
 if [ ! -f backend/.env ]; then
     cp backend/.env.dist backend/.env
-    print_success "backend/.env créé"
+    print_success "backend/.env créé depuis backend/.env.dist"
 else
-    print_warning "backend/.env existe déjà, conservation"
+    print_warning "backend/.env existe déjà, conservation des valeurs locales"
 fi
 
 if [ ! -f frontend/.env ]; then
-    cp frontend/.env.example frontend/.env
-    print_success "frontend/.env créé"
+    cp frontend/.env.dist frontend/.env
+    print_success "frontend/.env créé depuis frontend/.env.dist"
 else
-    print_warning "frontend/.env existe déjà, conservation"
+    print_warning "frontend/.env existe déjà, conservation des valeurs locales"
 fi
 
 # Démarrer les services Docker
